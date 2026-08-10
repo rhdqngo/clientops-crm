@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(18);
+select plan(22);
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'customers', 'customers table exists');
@@ -48,6 +48,27 @@ select has_function(
   'paginated customer search function exists'
 );
 select function_lang_is('public', 'list_customers', array['text', 'customer_status', 'integer', 'integer'], 'sql');
+
+select is(
+  has_function_privilege('anon', 'public.current_user_role()', 'EXECUTE'),
+  false,
+  'anon cannot execute the role helper'
+);
+select is(
+  has_function_privilege('authenticated', 'public.current_user_role()', 'EXECUTE'),
+  true,
+  'authenticated users can execute the invoker role helper'
+);
+select is(
+  has_function_privilege('anon', 'public.handle_new_auth_user()', 'EXECUTE'),
+  false,
+  'anon cannot execute the auth trigger helper'
+);
+select is(
+  has_function_privilege('authenticated', 'public.handle_new_auth_user()', 'EXECUTE'),
+  false,
+  'authenticated users cannot execute the auth trigger helper'
+);
 
 select has_index('public', 'customers', 'customers_name_trgm_idx', 'name search index exists');
 select has_index('public', 'customers', 'customers_phone_normalized_idx', 'phone search index exists');

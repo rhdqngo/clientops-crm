@@ -44,10 +44,11 @@ CSV는 화면의 현재 20건만 내보내지 않습니다. 목록과 같은 검
 | 범위 | 결과 |
 | --- | --- |
 | Vitest | 검증·전화번호·페이지·CSV·권한 결과·데모 reset guard 17개 |
-| pgTAP | schema, 제약, FK cascade, anon/ADMIN/STAFF RLS 29개 |
+| pgTAP | schema, 제약, FK cascade, 함수 권한, anon/ADMIN/STAFF RLS 33개 |
 | Playwright | Chromium desktop/tablet, WebKit mobile 핵심 흐름 6개 |
 | Responsive | 390×844, 768×1024, 1440×900 캡처와 overflow 확인 |
 | Build | lint, Next type generation, TypeScript, production build 통과 |
+| Production | Supabase Seoul 리전, Vercel 배포, STAFF 로그인·검색·필터·상담·CSV 실동작 확인 |
 
 ## 트레이드오프와 후속 과제
 

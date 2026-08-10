@@ -11,9 +11,10 @@
 
 ClientOps는 고객과 상담 기록을 빠르게 찾고 갱신하는 운영형 CRM입니다. URL 기반 검색·필터·페이지네이션, 역할별 권한, 전체 필터 CSV, 모바일 전용 행 목록을 하나의 실제 데이터 흐름으로 구현했습니다.
 
-- **Live demo:** 배포 후 이 위치에 공개 STAFF 데모 링크와 자격 증명을 안내합니다.
+- **Live demo:** <https://clientops-crm-nine.vercel.app>
+- **STAFF demo:** `staff.demo@clientops.local` / `ClientOpsDemo!2026`
 - **Repository:** <https://github.com/rhdqngo/clientops-crm>
-- 실제 고객 정보나 운영 비밀은 포함하지 않은 개인 포트폴리오 프로젝트입니다.
+- 실제 고객 정보나 운영 비밀은 포함하지 않은 개인 포트폴리오 프로젝트입니다. 데모에는 실제 개인정보를 입력하지 마세요.
 
 ## 핵심 기능
 
@@ -86,7 +87,7 @@ pnpm test:e2e
 pnpm build
 ```
 
-현재 로컬 검증 기준은 Vitest 17개, pgTAP 29개, Chromium/WebKit E2E 6개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다.
+현재 로컬 검증 기준은 Vitest 17개, pgTAP 33개, Chromium/WebKit E2E 6개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다. 공개 데모 데이터는 매일 오전 3시(KST)에 초기화됩니다.
 
 ## 데이터 모델과 권한
 
