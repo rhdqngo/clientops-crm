@@ -1,0 +1,3 @@
+-- Demo identities and sample CRM records are provisioned by `pnpm demo:provision`.
+-- The script reads credentials from an ignored environment file so passwords are
+-- never stored in version control.

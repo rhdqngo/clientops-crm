@@ -1,0 +1,40 @@
+name: Reset public demo data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    if: ${{ vars.DEMO_RESET_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reset only the configured portfolio project
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.DEMO_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEMO_SUPABASE_SERVICE_ROLE_KEY }}
+          DEMO_EXPECTED_PROJECT_REF: ${{ vars.DEMO_SUPABASE_PROJECT_REF }}
+          DEMO_ADMIN_EMAIL: ${{ secrets.DEMO_ADMIN_EMAIL }}
+          DEMO_ADMIN_PASSWORD: ${{ secrets.DEMO_ADMIN_PASSWORD }}
+          DEMO_STAFF_EMAIL: ${{ vars.DEMO_STAFF_EMAIL }}
+          DEMO_STAFF_PASSWORD: ${{ secrets.DEMO_STAFF_PASSWORD }}
+          DEMO_LOAD_SAMPLE_DATA: "true"
+          DEMO_RESET_DATA: "true"
+        run: pnpm demo:provision:ci

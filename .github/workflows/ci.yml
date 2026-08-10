@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-key
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_DEMO_MODE: "false"
+
+jobs:
+  quality:
+    name: Lint, type, unit, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  database:
+    name: PostgreSQL schema and RLS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm supabase:start
+      - run: pnpm test:db
+      - if: always()
+        run: pnpm supabase:stop --no-backup
+
+  e2e:
+    name: Chromium core flow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm supabase:start
+      - name: Export local Supabase environment
+        shell: bash
+        run: |
+          pnpm exec supabase status -o env > .supabase-ci.env
+          set -a
+          source .supabase-ci.env
+          set +a
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+      - name: Provision isolated demo fixtures
+        env:
+          DEMO_ADMIN_EMAIL: admin.ci@example.com
+          DEMO_ADMIN_PASSWORD: ClientOpsCI2026!
+          DEMO_STAFF_EMAIL: staff.ci@example.com
+          DEMO_STAFF_PASSWORD: ClientOpsCI2026!
+          DEMO_LOAD_SAMPLE_DATA: "true"
+          DEMO_RESET_DATA: "false"
+        run: pnpm demo:provision:ci
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run Chromium E2E
+        env:
+          DEMO_ADMIN_EMAIL: admin.ci@example.com
+          DEMO_ADMIN_PASSWORD: ClientOpsCI2026!
+          DEMO_STAFF_EMAIL: staff.ci@example.com
+          DEMO_STAFF_PASSWORD: ClientOpsCI2026!
+        run: pnpm test:e2e --project=chromium-desktop
+      - if: always()
+        run: pnpm supabase:stop --no-backup
