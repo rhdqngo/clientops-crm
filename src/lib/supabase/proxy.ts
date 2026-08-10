@@ -1,24 +1,80 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  detectLocale,
+  isLocale,
+  LOCALE_COOKIE,
+  localePath,
+  pathnameLocale,
+  stripLocale,
+  type Locale,
+} from "@/lib/i18n/config";
 import type { Database } from "./database.types";
 import { getPublicSupabaseEnv } from "./env";
 
-const protectedPrefixes = ["/dashboard", "/customers", "/api/customers"];
+const UI_ROOTS = ["/login", "/dashboard", "/customers"] as const;
+
+function isKnownUiPath(pathname: string): boolean {
+  return UI_ROOTS.some((root) => pathname === root || pathname.startsWith(`${root}/`));
+}
+
+function copyResponseCookies(source: NextResponse, target: NextResponse): NextResponse {
+  source.cookies.getAll().forEach((cookie) => target.cookies.set(cookie));
+  return target;
+}
+
+function rememberLocale(response: NextResponse, locale: Locale): NextResponse {
+  response.cookies.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return response;
+}
+
+function requestLocale(request: NextRequest): Locale {
+  const explicit = pathnameLocale(request.nextUrl.pathname);
+  if (explicit) return explicit;
+  const queryLocale = request.nextUrl.searchParams.get("lang");
+  if (isLocale(queryLocale)) return queryLocale;
+  return detectLocale(request.cookies.get(LOCALE_COOKIE)?.value, request.headers.get("accept-language"));
+}
 
 export async function updateSession(request: NextRequest) {
-  const env = getPublicSupabaseEnv();
-  const isProtected = protectedPrefixes.some((prefix) =>
-    request.nextUrl.pathname.startsWith(prefix),
-  );
+  const pathname = request.nextUrl.pathname;
+  const explicitLocale = pathnameLocale(pathname);
+  const locale = requestLocale(request);
+  const unlocalizedPath = explicitLocale ? stripLocale(pathname) : pathname;
 
+  if (!explicitLocale && (pathname === "/" || isKnownUiPath(pathname))) {
+    const url = request.nextUrl.clone();
+    url.pathname = localePath(locale, pathname === "/" ? "/dashboard" : pathname);
+    return rememberLocale(NextResponse.redirect(url), locale);
+  }
+
+  if (explicitLocale && unlocalizedPath === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = localePath(explicitLocale, "/dashboard");
+    return rememberLocale(NextResponse.redirect(url), explicitLocale);
+  }
+
+  const isApi = pathname.startsWith("/api/customers");
+  const isProtected =
+    isApi || unlocalizedPath === "/dashboard" || unlocalizedPath.startsWith("/dashboard/") ||
+    unlocalizedPath === "/customers" || unlocalizedPath.startsWith("/customers/");
+
+  const env = getPublicSupabaseEnv();
   if (!env) {
-    if (isProtected) {
+    if (isProtected && !isApi) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = localePath(locale, "/login");
       url.search = "?reason=config";
-      return NextResponse.redirect(url);
+      return rememberLocale(NextResponse.redirect(url), locale);
     }
-    return NextResponse.next({ request });
+    return explicitLocale
+      ? rememberLocale(NextResponse.next({ request }), explicitLocale)
+      : NextResponse.next({ request });
   }
 
   let response = NextResponse.next({ request });
@@ -39,20 +95,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && isProtected) {
+  if (!user && isProtected && !isApi) {
     const url = request.nextUrl.clone();
-    const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-    url.pathname = "/login";
+    const nextPath = `${pathname}${request.nextUrl.search}`;
+    url.pathname = localePath(locale, "/login");
     url.search = `?next=${encodeURIComponent(nextPath)}`;
-    return NextResponse.redirect(url);
+    return rememberLocale(copyResponseCookies(response, NextResponse.redirect(url)), locale);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  if (user && explicitLocale && unlocalizedPath === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = localePath(explicitLocale, "/dashboard");
     url.search = "";
-    return NextResponse.redirect(url);
+    return rememberLocale(copyResponseCookies(response, NextResponse.redirect(url)), explicitLocale);
   }
 
-  return response;
+  return explicitLocale ? rememberLocale(response, explicitLocale) : response;
 }

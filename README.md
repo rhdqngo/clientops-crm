@@ -9,9 +9,10 @@
 
 ![ClientOps 고객 원장](docs/ui/evidence/customers/1440x900.png)
 
-ClientOps는 고객과 상담 기록을 빠르게 찾고 갱신하는 운영형 CRM입니다. URL 기반 검색·필터·페이지네이션, 역할별 권한, 전체 필터 CSV, 모바일 전용 행 목록을 하나의 실제 데이터 흐름으로 구현했습니다.
+ClientOps는 고객과 상담 기록을 빠르게 찾고 갱신하는 운영형 CRM입니다. 한국어·영어 URL, URL 기반 검색·필터·페이지네이션, 역할별 권한, 현지화된 전체 필터 CSV, 모바일 전용 행 목록을 하나의 실제 데이터 흐름으로 구현했습니다.
 
-- **Live demo:** <https://clientops-crm-nine.vercel.app>
+- **Live demo (한국어):** <https://clientops-crm-nine.vercel.app/ko/login>
+- **Live demo (English):** <https://clientops-crm-nine.vercel.app/en/login>
 - **STAFF demo:** `staff.demo@clientops.local` / `ClientOpsDemo!2026`
 - **ADMIN demo:** `admin.demo@clientops.local` / `ClientOpsAdmin!2026`
 - **Repository:** <https://github.com/rhdqngo/clientops-crm>
@@ -20,11 +21,12 @@ ClientOps는 고객과 상담 기록을 빠르게 찾고 갱신하는 운영형 
 ## 핵심 기능
 
 - 이메일·비밀번호 로그인과 비로그인 보호 경로
+- `/ko`, `/en` 언어 URL, 브라우저 언어 감지와 사용자 선택 기억
 - 전체·신규·예약·완료 고객 수와 최근 상담 5건 대시보드
 - 이름·정규화 전화번호 검색, 상태 필터, 20건 페이지네이션
 - 고객 등록·수정·상태 변경과 append-only 상담 타임라인
 - ADMIN 전용 고객 영구 삭제와 연결 상담 기록 cascade 삭제
-- 현재 검색·필터 전체 결과를 RFC 4180 CSV로 내보내기
+- 현재 검색·필터 전체 결과를 선택 언어의 RFC 4180 CSV로 내보내기
 - 1440px 표, 768px 우선순위 축소, 390px 단일 행 목록
 
 ## 보안 구조
@@ -88,7 +90,7 @@ pnpm test:e2e
 pnpm build
 ```
 
-현재 로컬 검증 기준은 Vitest 17개, pgTAP 33개, Chromium/WebKit E2E 6개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다. 공개 데모 데이터는 매일 오전 3시(KST)에 초기화됩니다. ADMIN은 고객과 연결 상담 기록을 영구 삭제할 수 있으므로 실제 정보는 입력하지 마세요.
+현재 로컬 검증 기준은 Vitest 24개, pgTAP 33개, Chromium/WebKit E2E 9개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다. 공개 데모 데이터는 매일 오전 3시(KST)에 초기화됩니다. ADMIN은 고객과 연결 상담 기록을 영구 삭제할 수 있으므로 실제 정보는 입력하지 마세요.
 
 ## 데이터 모델과 권한
 
@@ -99,7 +101,7 @@ pnpm build
 | 상담 수정·삭제 | 거부 | 거부 |
 | 고객·연결 상담 영구 삭제 | 거부 | 허용 |
 
-- 서버 저장 시간은 UTC, UI와 CSV 표시는 `ko-KR`/`Asia/Seoul`입니다.
+- 서버 저장 시간은 UTC이며 UI와 CSV는 한국어 `ko-KR`, 영어 `en-US` 형식을 사용하되 시간대는 모두 `Asia/Seoul`입니다.
 - 전화번호 원문과 검색용 숫자 정규화 값을 함께 저장합니다.
 - 공개 테이블은 anon 접근을 차단하고 인증 사용자에게 필요한 최소 정책만 제공합니다.
 

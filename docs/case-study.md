@@ -24,9 +24,13 @@ STAFF 삭제는 버튼을 숨기는 것으로 끝내지 않았습니다. UI, 인
 
 검색어 `q`, 상태 `status`, 페이지 `page`를 URL query로 관리합니다. 새로고침·공유·뒤로 가기에도 문맥이 유지되고, 상세에서 목록으로 돌아갈 때 동일한 결과와 페이지를 복원할 수 있습니다.
 
+### 언어도 URL 상태로 관리
+
+한국어와 영어를 `/ko`, `/en` 경로로 구분해 공유 링크와 새로고침에서도 언어가 재현됩니다. 첫 방문은 저장된 선택과 브라우저 언어를 순서대로 확인하며, 언어를 바꿔도 검색·필터·페이지·상세 복귀 문맥을 유지합니다. UI뿐 아니라 서버 검증·권한 오류, 상태 레이블, 서울 시간 표시와 CSV 헤더까지 같은 locale 경계를 사용합니다.
+
 ### 필터 전체 CSV
 
-CSV는 화면의 현재 20건만 내보내지 않습니다. 목록과 같은 검색·필터·정렬을 사용해 전체 결과를 페이지 단위로 조회하고 RFC 4180 인용, CRLF, UTF-8 BOM, 한글 헤더를 적용합니다.
+CSV는 화면의 현재 20건만 내보내지 않습니다. 목록과 같은 검색·필터·정렬을 사용해 전체 결과를 페이지 단위로 조회하고 RFC 4180 인용, CRLF, UTF-8 BOM과 선택 언어의 헤더·상태·날짜를 적용합니다.
 
 ### append-only 상담 기록
 
@@ -43,12 +47,12 @@ CSV는 화면의 현재 20건만 내보내지 않습니다. 목록과 같은 검
 
 | 범위 | 결과 |
 | --- | --- |
-| Vitest | 검증·전화번호·페이지·CSV·권한 결과·데모 reset guard 17개 |
+| Vitest | locale 감지·사전·검증·전화번호·페이지·한영 CSV·권한 결과·데모 reset guard 24개 |
 | pgTAP | schema, 제약, FK cascade, 함수 권한, anon/ADMIN/STAFF RLS 33개 |
-| Playwright | Chromium desktop/tablet, WebKit mobile 핵심 흐름 6개 |
+| Playwright | Chromium desktop/tablet, WebKit mobile 한영 핵심 흐름 9개 |
 | Responsive | 390×844, 768×1024, 1440×900 캡처와 overflow 확인 |
 | Build | lint, Next type generation, TypeScript, production build 통과 |
-| Production | Supabase Seoul 리전, Vercel 배포, STAFF 로그인·검색·필터·상담·CSV 실동작 확인 |
+| Production | Supabase Seoul 리전, Vercel 배포, STAFF/ADMIN 로그인·언어 전환·검색·필터·상담·CSV 실동작 확인 |
 
 ## 트레이드오프와 후속 과제
 

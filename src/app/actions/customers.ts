@@ -5,17 +5,20 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/dal";
 import { mapAuthorizationError } from "@/lib/actions/result";
 import type { ActionResult, Customer } from "@/lib/domain/types";
+import { DEFAULT_LOCALE, isLocale, LOCALES, localePath, type Locale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
+import { safeCustomerReturnTo } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { customerIdSchema, customerInputSchema, interactionInputSchema } from "@/lib/validation";
+import { getCustomerIdSchema, getCustomerInputSchema, getInteractionInputSchema } from "@/lib/validation";
 
-function mapActionError(error: unknown): ActionResult {
-  const authorizationResult = mapAuthorizationError(error);
+function normalizeLocale(locale: Locale): Locale {
+  return isLocale(locale) ? locale : DEFAULT_LOCALE;
+}
+
+function mapActionError(error: unknown, locale: Locale): ActionResult {
+  const authorizationResult = mapAuthorizationError(error, locale);
   if (authorizationResult) return authorizationResult;
-  return {
-    ok: false,
-    code: "UNKNOWN",
-    message: "요청을 처리하지 못했습니다. 입력 내용을 보존했으니 다시 시도해 주세요.",
-  };
+  return { ok: false, code: "UNKNOWN", message: getDictionary(locale).errors.actionUnknown };
 }
 
 function customerFormValues(formData: FormData) {
@@ -28,16 +31,27 @@ function customerFormValues(formData: FormData) {
   };
 }
 
+function revalidateCustomerViews(customerId?: string) {
+  for (const locale of LOCALES) {
+    revalidatePath(localePath(locale, "/customers"));
+    revalidatePath(localePath(locale, "/dashboard"));
+    if (customerId) revalidatePath(localePath(locale, `/customers/${customerId}`));
+  }
+}
+
 export async function createCustomerAction(
+  requestedLocale: Locale,
   _previousState: ActionResult<{ id: string }>,
   formData: FormData,
 ): Promise<ActionResult<{ id: string }>> {
-  const parsed = customerInputSchema.safeParse(customerFormValues(formData));
+  const locale = normalizeLocale(requestedLocale);
+  const messages = getDictionary(locale);
+  const parsed = getCustomerInputSchema(locale).safeParse(customerFormValues(formData));
   if (!parsed.success) {
     return {
       ok: false,
       code: "VALIDATION",
-      message: "입력 내용을 확인해 주세요.",
+      message: messages.errors.input,
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -59,26 +73,28 @@ export async function createCustomerAction(
     if (error || !data) throw error ?? new Error("Missing inserted customer");
     customerId = data.id;
   } catch (error) {
-    return mapActionError(error);
+    return mapActionError(error, locale);
   }
 
-  revalidatePath("/customers");
-  revalidatePath("/dashboard");
-  redirect(`/customers/${customerId}?created=1`);
+  revalidateCustomerViews(customerId);
+  redirect(`${localePath(locale, `/customers/${customerId}`)}?created=1`);
 }
 
 export async function updateCustomerAction(
+  requestedLocale: Locale,
   customerId: string,
   _previousState: ActionResult<Customer>,
   formData: FormData,
 ): Promise<ActionResult<Customer>> {
-  const id = customerIdSchema.safeParse(customerId);
-  const parsed = customerInputSchema.safeParse(customerFormValues(formData));
+  const locale = normalizeLocale(requestedLocale);
+  const messages = getDictionary(locale);
+  const id = getCustomerIdSchema(locale).safeParse(customerId);
+  const parsed = getCustomerInputSchema(locale).safeParse(customerFormValues(formData));
   if (!id.success || !parsed.success) {
     return {
       ok: false,
       code: "VALIDATION",
-      message: "입력 내용을 확인해 주세요.",
+      message: messages.errors.input,
       fieldErrors: parsed.success ? undefined : parsed.error.flatten().fieldErrors,
     };
   }
@@ -98,25 +114,24 @@ export async function updateCustomerAction(
       .select("id,name,phone,email,address,status,created_at,updated_at")
       .maybeSingle();
     if (error) throw error;
-    if (!data) {
-      return { ok: false, code: "NOT_FOUND", message: "고객을 찾을 수 없습니다." };
-    }
-    revalidatePath(`/customers/${id.data}`);
-    revalidatePath("/customers");
-    revalidatePath("/dashboard");
-    return { ok: true, data, message: "고객 정보가 저장되었습니다." };
+    if (!data) return { ok: false, code: "NOT_FOUND", message: messages.errors.customerNotFound };
+    revalidateCustomerViews(id.data);
+    return { ok: true, data, message: messages.success.customerUpdated };
   } catch (error) {
-    return mapActionError(error);
+    return mapActionError(error, locale);
   }
 }
 
 export async function addInteractionAction(
+  requestedLocale: Locale,
   customerId: string,
   _previousState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const id = customerIdSchema.safeParse(customerId);
-  const parsed = interactionInputSchema.safeParse({
+  const locale = normalizeLocale(requestedLocale);
+  const messages = getDictionary(locale);
+  const id = getCustomerIdSchema(locale).safeParse(customerId);
+  const parsed = getInteractionInputSchema(locale).safeParse({
     type: formData.get("type"),
     memo: formData.get("memo"),
   });
@@ -124,7 +139,7 @@ export async function addInteractionAction(
     return {
       ok: false,
       code: "VALIDATION",
-      message: "상담 내용을 확인해 주세요.",
+      message: messages.errors.interactionInput,
       fieldErrors: parsed.success ? undefined : parsed.error.flatten().fieldErrors,
     };
   }
@@ -139,23 +154,25 @@ export async function addInteractionAction(
       created_by: context.user.id,
     });
     if (error) throw error;
-    revalidatePath(`/customers/${id.data}`);
-    revalidatePath("/dashboard");
-    return { ok: true, message: "상담 기록이 추가되었습니다." };
+    revalidateCustomerViews(id.data);
+    return { ok: true, message: messages.success.interactionAdded };
   } catch (error) {
-    return mapActionError(error);
+    return mapActionError(error, locale);
   }
 }
 
 export async function deleteCustomerAction(
+  requestedLocale: Locale,
   customerId: string,
   returnTo: string,
   _previousState: ActionResult,
 ): Promise<ActionResult> {
   void _previousState;
-  const id = customerIdSchema.safeParse(customerId);
+  const locale = normalizeLocale(requestedLocale);
+  const messages = getDictionary(locale);
+  const id = getCustomerIdSchema(locale).safeParse(customerId);
   if (!id.success) {
-    return { ok: false, code: "VALIDATION", message: "올바르지 않은 고객 ID입니다." };
+    return { ok: false, code: "VALIDATION", message: messages.errors.invalidCustomerId };
   }
 
   try {
@@ -168,18 +185,13 @@ export async function deleteCustomerAction(
       .select("id")
       .maybeSingle();
     if (error) throw error;
-    if (!data) {
-      return { ok: false, code: "NOT_FOUND", message: "고객을 찾을 수 없습니다." };
-    }
+    if (!data) return { ok: false, code: "NOT_FOUND", message: messages.errors.customerNotFound };
   } catch (error) {
-    return mapActionError(error);
+    return mapActionError(error, locale);
   }
 
-  revalidatePath("/customers");
-  revalidatePath("/dashboard");
-  const destination = returnTo.startsWith("/customers") && !returnTo.startsWith("//")
-    ? returnTo
-    : "/customers";
+  revalidateCustomerViews(id.data);
+  const destination = safeCustomerReturnTo(returnTo, locale);
   const separator = destination.includes("?") ? "&" : "?";
   redirect(`${destination}${separator}deleted=1`);
 }

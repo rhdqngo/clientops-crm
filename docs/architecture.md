@@ -10,7 +10,7 @@ flowchart TB
   end
 
   subgraph Vercel["Vercel · Next.js runtime"]
-    Proxy["proxy.ts · session refresh"]
+    Proxy["proxy.ts · locale routing + session refresh"]
     Pages["Server Components"]
     Actions["Server Actions"]
     CSV["CSV Route Handler"]
@@ -38,7 +38,9 @@ flowchart TB
   Customers -->|"ON DELETE CASCADE"| Interactions
 ```
 
-`proxy.ts`는 세션 갱신과 비로그인 리다이렉트만 담당합니다. 데이터 접근과 mutation은 서버 DAL을 통과하며 ADMIN 전용 작업은 Server Action에서 역할을 다시 검사합니다. RLS는 우회된 요청에도 동일한 정책을 적용하는 최종 경계입니다.
+`proxy.ts`는 `/ko`·`/en` 경로 선택, 언어 쿠키, 세션 갱신과 비로그인 리다이렉트를 담당합니다. 데이터 접근과 mutation은 서버 DAL을 통과하며 ADMIN 전용 작업은 Server Action에서 역할을 다시 검사합니다. RLS는 우회된 요청에도 동일한 정책을 적용하는 최종 경계입니다.
+
+번역 사전은 타입으로 구조를 고정하며 Server Component와 Client Component가 동일한 locale을 사용합니다. 데이터베이스 enum과 사용자가 입력한 고객·상담 원문은 번역하지 않습니다.
 
 ## Data model
 
@@ -90,7 +92,7 @@ erDiagram
 
 | Layer | Check |
 | --- | --- |
-| Domain | Zod bounds, enum and UUID validation, phone normalization, pagination, CSV encoding |
+| Domain | locale detection, dictionary parity, localized Zod errors, phone normalization, pagination, bilingual CSV encoding |
 | Database | migration, constraints, anon denial, role CRUD, STAFF delete denial, cascade |
 | Browser | login, redirect, create/edit/search/filter, interaction append, CSV, role-specific delete |
 | Build | ESLint, generated Next types, TypeScript, production build |

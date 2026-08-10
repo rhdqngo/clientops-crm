@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import type { Profile, UserRole } from "@/lib/domain/types";
+import { localePath, type Locale } from "@/lib/i18n/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export type AuthorizationErrorCode = "LOGIN_REQUIRED" | "FORBIDDEN";
 
 export class AuthorizationError extends Error {
   constructor(
     public readonly status: 401 | 403,
-    message: string,
+    public readonly code: AuthorizationErrorCode,
   ) {
-    super(message);
+    super(code);
     this.name = "AuthorizationError";
   }
 }
@@ -38,20 +41,20 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
 export async function requireAuthContext(): Promise<AuthContext> {
   const context = await getAuthContext();
-  if (!context) throw new AuthorizationError(401, "로그인이 필요합니다.");
+  if (!context) throw new AuthorizationError(401, "LOGIN_REQUIRED");
   return context;
 }
 
-export async function requirePageAuth(): Promise<AuthContext> {
+export async function requirePageAuth(locale: Locale): Promise<AuthContext> {
   const context = await getAuthContext();
-  if (!context) redirect("/login");
+  if (!context) redirect(localePath(locale, "/login"));
   return context;
 }
 
 export async function requireRole(roles: UserRole[]): Promise<AuthContext> {
   const context = await requireAuthContext();
   if (!roles.includes(context.profile.role)) {
-    throw new AuthorizationError(403, "이 작업을 수행할 권한이 없습니다.");
+    throw new AuthorizationError(403, "FORBIDDEN");
   }
   return context;
 }

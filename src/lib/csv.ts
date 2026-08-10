@@ -1,35 +1,27 @@
 import type { Customer } from "@/lib/domain/types";
-import { CUSTOMER_STATUS_LABELS, formatSeoulDateTime } from "@/lib/domain/labels";
-
-const CSV_HEADERS = [
-  "ID",
-  "고객명",
-  "전화번호",
-  "이메일",
-  "주소",
-  "상태",
-  "등록일시",
-  "수정일시",
-] as const;
+import { formatSeoulDateTime, getCustomerStatusLabels } from "@/lib/domain/labels";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 export function escapeCsvCell(value: unknown): string {
   const text = value == null ? "" : String(value);
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-export function buildCustomerCsv(customers: Customer[]): string {
+export function buildCustomerCsv(customers: Customer[], locale: Locale = "ko"): string {
+  const labels = getCustomerStatusLabels(locale);
   const rows = customers.map((customer) => [
     customer.id,
     customer.name,
     customer.phone,
     customer.email,
     customer.address,
-    CUSTOMER_STATUS_LABELS[customer.status],
-    formatSeoulDateTime(customer.created_at),
-    formatSeoulDateTime(customer.updated_at),
+    labels[customer.status],
+    formatSeoulDateTime(customer.created_at, locale),
+    formatSeoulDateTime(customer.updated_at, locale),
   ]);
 
-  const body = [CSV_HEADERS, ...rows]
+  const body = [getDictionary(locale).csv.headers, ...rows]
     .map((row) => row.map(escapeCsvCell).join(","))
     .join("\r\n");
 

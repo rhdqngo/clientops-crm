@@ -1,37 +1,30 @@
 import type { CustomerStatus, InteractionType, UserRole } from "./types";
+import { intlLocale, type Locale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
-  NEW: "신규",
-  CONTACTED: "연락 완료",
-  BOOKED: "예약",
-  COMPLETED: "완료",
-  CANCELLED: "취소",
-};
+export function getCustomerStatusLabels(locale: Locale): Record<CustomerStatus, string> {
+  return getDictionary(locale).statuses;
+}
 
-export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
-  PHONE: "전화",
-  SMS: "문자",
-  EMAIL: "이메일",
-  VISIT: "방문",
-};
+export function getInteractionTypeLabels(locale: Locale): Record<InteractionType, string> {
+  return getDictionary(locale).interactionTypes;
+}
 
-export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "관리자",
-  STAFF: "스태프",
-};
+export function getUserRoleLabels(locale: Locale): Record<UserRole, string> {
+  return getDictionary(locale).roles;
+}
 
-const seoulDateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
+export function formatSeoulDateTime(value: string | Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: locale === "ko" ? "numeric" : "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(typeof value === "string" ? new Date(value) : value);
+}
 
-export function formatSeoulDateTime(value: string | Date): string {
-  return seoulDateTimeFormatter
-    .format(typeof value === "string" ? new Date(value) : value)
-    .replace(/\bAM\b|a\.m\./gi, "오전")
-    .replace(/\bPM\b|p\.m\./gi, "오후");
+export function formatNumber(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(intlLocale(locale)).format(value);
 }

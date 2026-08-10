@@ -4,61 +4,80 @@ import {
   INTERACTION_TYPES,
   type CustomerStatus,
 } from "@/lib/domain/types";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
-export const loginSchema = z.object({
-  email: z.string().trim().email("올바른 이메일 주소를 입력해 주세요.").max(254),
-  password: z.string().min(1, "비밀번호를 입력해 주세요."),
-});
+export function getLoginSchema(locale: Locale) {
+  const messages = getDictionary(locale).errors;
+  return z.object({
+    email: z.string().trim().email(messages.emailFormat).max(254),
+    password: z.string().min(1, messages.passwordRequired),
+  });
+}
 
-export const customerInputSchema = z.object({
-  name: z.string().trim().min(1, "고객명은 필수입니다.").max(100, "고객명은 100자 이하여야 합니다."),
-  phone: z.preprocess(
-    emptyToUndefined,
-    z
+export function getCustomerInputSchema(locale: Locale) {
+  const messages = getDictionary(locale).errors;
+  return z.object({
+    name: z.string().trim().min(1, messages.nameRequired).max(100, messages.nameMax),
+    phone: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .trim()
+        .min(7, messages.phoneMin)
+        .max(30, messages.phoneMax)
+        .regex(/^[0-9+()\-\s]+$/, messages.phoneFormat)
+        .optional(),
+    ),
+    email: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().email(messages.emailFormat).max(254).optional(),
+    ),
+    address: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().min(1).max(300, messages.addressMax).optional(),
+    ),
+    status: z.enum(CUSTOMER_STATUSES),
+  });
+}
+
+export function getInteractionInputSchema(locale: Locale) {
+  const messages = getDictionary(locale).errors;
+  return z.object({
+    type: z.enum(INTERACTION_TYPES),
+    memo: z
       .string()
       .trim()
-      .min(7, "전화번호는 7자 이상이어야 합니다.")
-      .max(30, "전화번호는 30자 이하여야 합니다.")
-      .regex(/^[0-9+()\-\s]+$/, "전화번호 형식을 확인해 주세요.")
-      .optional(),
-  ),
-  email: z.preprocess(
-    emptyToUndefined,
-    z.string().trim().email("올바른 이메일 주소를 입력해 주세요.").max(254).optional(),
-  ),
-  address: z.preprocess(
-    emptyToUndefined,
-    z.string().trim().min(1).max(300, "주소는 300자 이하여야 합니다.").optional(),
-  ),
-  status: z.enum(CUSTOMER_STATUSES),
-});
+      .min(1, messages.memoRequired)
+      .max(2000, messages.memoMax),
+  });
+}
 
-export const interactionInputSchema = z.object({
-  type: z.enum(INTERACTION_TYPES),
-  memo: z
-    .string()
-    .trim()
-    .min(1, "상담 메모를 입력해 주세요.")
-    .max(2000, "상담 메모는 2,000자 이하여야 합니다."),
-});
+export function getCustomerIdSchema(locale: Locale) {
+  return z.string().uuid(getDictionary(locale).errors.invalidCustomerId);
+}
 
-export const customerIdSchema = z.string().uuid("올바르지 않은 고객 ID입니다.");
+export function getCustomerFiltersSchema(locale: Locale) {
+  const messages = getDictionary(locale).errors;
+  return z.object({
+    q: z.string().trim().max(100, messages.searchMax),
+    status: z.preprocess(emptyToUndefined, z.enum(CUSTOMER_STATUSES).optional()),
+    page: z.coerce.number().int().min(1, messages.pageMin),
+  });
+}
 
-export const customerFiltersSchema = z.object({
-  q: z.string().trim().max(100, "검색어는 100자 이하여야 합니다."),
-  status: z.preprocess(emptyToUndefined, z.enum(CUSTOMER_STATUSES).optional()),
-  page: z.coerce.number().int().min(1, "페이지는 1 이상이어야 합니다."),
-});
-
-export function parseCustomerFilters(input: {
-  q?: string | string[];
-  status?: string | string[];
-  page?: string | string[];
-}) {
-  return customerFiltersSchema.parse({
+export function parseCustomerFilters(
+  input: {
+    q?: string | string[];
+    status?: string | string[];
+    page?: string | string[];
+  },
+  locale: Locale = "ko",
+) {
+  return getCustomerFiltersSchema(locale).parse({
     q: Array.isArray(input.q) ? input.q[0] : input.q ?? "",
     status: Array.isArray(input.status) ? input.status[0] : input.status,
     page: Array.isArray(input.page) ? input.page[0] : input.page ?? 1,

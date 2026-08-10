@@ -2,15 +2,22 @@
 
 import { redirect } from "next/navigation";
 import type { ActionResult } from "@/lib/domain/types";
+import { DEFAULT_LOCALE, isLocale, localePath, type Locale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
+import { safeAppNext } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SupabaseConfigurationError } from "@/lib/supabase/env";
-import { loginSchema } from "@/lib/validation";
+import { getLoginSchema } from "@/lib/validation";
 
 export async function loginAction(
+  requestedLocale: Locale,
+  nextPath: string | undefined,
   _previousState: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
-  const parsed = loginSchema.safeParse({
+  const locale = isLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
+  const messages = getDictionary(locale).errors;
+  const parsed = getLoginSchema(locale).safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
@@ -19,7 +26,7 @@ export async function loginAction(
     return {
       ok: false,
       code: "VALIDATION",
-      message: "입력 내용을 확인해 주세요.",
+      message: messages.input,
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -28,35 +35,24 @@ export async function loginAction(
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) {
-      return {
-        ok: false,
-        code: "UNAUTHORIZED",
-        message: "이메일 또는 비밀번호가 올바르지 않습니다.",
-      };
+      return { ok: false, code: "UNAUTHORIZED", message: messages.invalidCredentials };
     }
   } catch (error) {
     if (error instanceof SupabaseConfigurationError) {
-      return {
-        ok: false,
-        code: "UNKNOWN",
-        message: "서비스 연결이 구성되지 않았습니다. 운영 담당자에게 문의해 주세요.",
-      };
+      return { ok: false, code: "UNKNOWN", message: messages.serviceConfig };
     }
-    return {
-      ok: false,
-      code: "UNKNOWN",
-      message: "로그인 요청을 처리하지 못했습니다. 다시 시도해 주세요.",
-    };
+    return { ok: false, code: "UNKNOWN", message: messages.loginUnknown };
   }
 
-  redirect("/dashboard");
+  redirect(safeAppNext(nextPath, locale));
 }
 
-export async function logoutAction() {
+export async function logoutAction(requestedLocale: Locale) {
+  const locale = isLocale(requestedLocale) ? requestedLocale : DEFAULT_LOCALE;
   try {
     const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
   } finally {
-    redirect("/login");
+    redirect(localePath(locale, "/login"));
   }
 }
