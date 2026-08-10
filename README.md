@@ -13,6 +13,7 @@ ClientOps는 고객과 상담 기록을 빠르게 찾고 갱신하는 운영형 
 
 - **Live demo:** <https://clientops-crm-nine.vercel.app>
 - **STAFF demo:** `staff.demo@clientops.local` / `ClientOpsDemo!2026`
+- **ADMIN demo:** `admin.demo@clientops.local` / `ClientOpsAdmin!2026`
 - **Repository:** <https://github.com/rhdqngo/clientops-crm>
 - 실제 고객 정보나 운영 비밀은 포함하지 않은 개인 포트폴리오 프로젝트입니다. 데모에는 실제 개인정보를 입력하지 마세요.
 
@@ -87,7 +88,7 @@ pnpm test:e2e
 pnpm build
 ```
 
-현재 로컬 검증 기준은 Vitest 17개, pgTAP 33개, Chromium/WebKit E2E 6개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다. 공개 데모 데이터는 매일 오전 3시(KST)에 초기화됩니다.
+현재 로컬 검증 기준은 Vitest 17개, pgTAP 33개, Chromium/WebKit E2E 6개입니다. DB와 E2E 테스트에는 실행 중인 로컬 Supabase와 provisioning된 데모 사용자가 필요합니다. 공개 데모 데이터는 매일 오전 3시(KST)에 초기화됩니다. ADMIN은 고객과 연결 상담 기록을 영구 삭제할 수 있으므로 실제 정보는 입력하지 마세요.
 
 ## 데이터 모델과 권한
 

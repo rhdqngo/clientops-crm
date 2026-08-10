@@ -10,6 +10,7 @@ export default async function LoginPage({
   searchParams: Promise<{ reason?: string }>;
 }) {
   const { reason } = await searchParams;
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   return (
     <main className="grid min-h-screen place-items-center px-4 py-12">
       <section className="w-full max-w-[420px] border-y border-[#d5dbd7] bg-white px-7 py-9 sm:px-10">
@@ -21,7 +22,7 @@ export default async function LoginPage({
             Supabase 연결 환경변수를 설정한 뒤 다시 시도해 주세요.
           </div>
         )}
-        <LoginForm />
+        <LoginForm demoMode={demoMode} />
       </section>
     </main>
   );
